@@ -8,7 +8,7 @@
     <list>
         <mapping class="com.example.android.sunnyweather_java.db.Province" />
         <mapping class="com.example.android.sunnyweather_java.db.City" />
-        <mapping class="com.example.android.sunnyweather_java.db.County" />
+        <mapping class="com.example.android.sunnyweather_java.db.Country" />
     </list>
 
 </litepal>
