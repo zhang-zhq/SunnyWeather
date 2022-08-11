@@ -2,6 +2,7 @@ package com.example.android.sunnyweather_java;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -13,27 +14,21 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-
 import com.example.android.sunnyweather_java.db.City;
 import com.example.android.sunnyweather_java.db.Country;
 import com.example.android.sunnyweather_java.db.Province;
 import com.example.android.sunnyweather_java.util.HttpUtil;
 import com.example.android.sunnyweather_java.util.Utility;
-
 import org.litepal.LitePal;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
-
 public class ChooseAreaFragment extends Fragment {
     public static final int LEVEL_PROVINCE = 0;
     public static final int LEVEL_CITY = 1;
@@ -52,7 +47,6 @@ public class ChooseAreaFragment extends Fragment {
      * */
     private Province selectedProvince;
     private City selectedCity;
-    private Country selectedCountry;
     private int currentLevel;
 
     @Nullable
@@ -86,6 +80,27 @@ public class ChooseAreaFragment extends Fragment {
                 }else if(currentLevel == LEVEL_CITY){
                     selectedCity = cityList.get(position);
                     queryCounties();
+                }else if(currentLevel == LEVEL_COUNTRY){
+                    /**
+                     * 这里当城市界面到达县时，在点击跳转到对应县的天气界面
+                     * */
+                    //获取当前用户点击的县所对应的天气id
+                   String weatherId =  countryList.get(position).getWeatherId();
+                   //如果左边的对象是右边对象的实例
+                   //从当前显示的县级跳转到天气界面
+                    if(getActivity() instanceof MainActivity){
+                       Intent intent = new Intent(getActivity(),WeatherActivity.class);
+                       intent.putExtra("weather_id",weatherId);
+                       //天气活动从而获取这个ID,并把这个id传入服务器段，获取对应的天气信息
+                       startActivity(intent);
+                       //把这个界面注销
+                        getActivity().finish();
+                   }else if (getActivity() instanceof WeatherActivity){
+                        WeatherActivity activity = (WeatherActivity) getActivity();
+                        activity.drawerLayout.closeDrawers();
+                        activity.swipeRefreshLayout.setRefreshing(true);
+                        activity.requestWeather(weatherId);
+                    }
                 }
             }
         });
@@ -109,9 +124,11 @@ public class ChooseAreaFragment extends Fragment {
     private void queryProvinces() {
         titleText.setText("中国");
         backButton.setVisibility(View.GONE);//将返回按键隐藏
-        provinceList = LitePal.findAll(Province.class);
+         provinceList= LitePal.findAll(Province.class);
+        System.out.println(provinceList.size());
         //先从数据库中查询所有省份
         if(provinceList.size() > 0 ){
+            System.out.println(provinceList.size());
             dataList.clear();
             //将从数据库中查询出来的所有省份的名称添加到指定集合中
             for (Province province: provinceList) {
@@ -121,11 +138,11 @@ public class ChooseAreaFragment extends Fragment {
             listView.setSelection(0);
             //查询完毕将当前级别设置为省级
             currentLevel = LEVEL_PROVINCE;
-            Log.d("ChooseAreaFragment","冲数据库中查省份");
+            Log.d("ChooseAreaFragment","从数据库中查省份");
         }else{
             //数据库中没有数据
             String address = "http://guolin.tech/api/china";
-            Log.d("ChooseAreaFragment"," queryProvinces");
+            Log.d("ChooseAreaFragment"," 从服务器段查询省份");
             queryFromServer(address,"province");
         }
     }
@@ -140,7 +157,6 @@ public class ChooseAreaFragment extends Fragment {
         //根据所选的省份id查询出对应的所有地级市
         cityList = LitePal.where("provinceid =?", String.valueOf(selectedProvince.getId()))
                 .find(City.class);
-        Log.d("ChooseAreaFragment","queryCities()");
         if(cityList.size() > 0){
             dataList.clear();
             for (City city:cityList) {
@@ -150,12 +166,13 @@ public class ChooseAreaFragment extends Fragment {
             listView.setSelection(0);
             //查询完毕将当前级别设置为省级
             currentLevel = LEVEL_CITY;
+            Log.d("ChooseAreaFragment","从数据库中查询省份所有地级市");
         }else{
             //如果没有查到,就去服务器查
             int provinceCode = selectedProvince.getProvinceCode();
             String address = "http://guolin.tech/api/china/" + provinceCode ;
             queryFromServer(address,"city");
-            Log.d("ChooseAreaFragment","啊啊啊");
+            Log.d("ChooseAreaFragment","从服务器中查询省份所有地级市");
         }
     }
     /**
@@ -175,24 +192,26 @@ public class ChooseAreaFragment extends Fragment {
             listView.setSelection(0);
             //查询完毕将当前级别设置为省级
             currentLevel = LEVEL_COUNTRY;
+            Log.d("ChooseAreaFragment","从数据库中查询省份所有县");
         }else {
             int provinceCode = selectedProvince.getProvinceCode();
             int cityCode = selectedCity.getCityCode();
             String address = "http://guolin.tech/api/china/" + provinceCode + "/" + cityCode;
             queryFromServer(address,"country");
+            Log.d("ChooseAreaFragment","从服务器中查询省份所有县");
         }
     }
     /**
      * 根据传入的地址和类型来从服务器上查询数据
      * */
     public void  queryFromServer(String address,  final String type){
-        Log.d("ChooseAreaFragment","queryFromServer");
+        Log.d("ChooseAreaFragment","服务器查询省市县开始执行");
         showProgressDialog();//显示进度条对话框
         HttpUtil.setOkhttpRequest(address, new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 //获取服务器返回的数据
-                Log.d("ChooseAreaFragment","onResponse");
+                Log.d("ChooseAreaFragment","Response");
                 String responseText = response.body().string();
                 boolean result = false;
                 if("province".equals(type)){
@@ -202,7 +221,6 @@ public class ChooseAreaFragment extends Fragment {
                 }else if("country".equals(type)){
                      result = Utility.handleCountryResponse(responseText,selectedCity.getId());
                 }
-                Log.d("ChooseAreaFragment","string怎么说");
                 //如果解析成功
                 if(result){
                     getActivity().runOnUiThread(new Runnable() {
@@ -229,7 +247,7 @@ public class ChooseAreaFragment extends Fragment {
                     @Override
                     public void run() {
                         closeProgressDialog();
-                        Toast.makeText(getContext(),"加载失败",Toast.LENGTH_LONG).show();
+                        Toast.makeText(getContext(),"省市县加载失败",Toast.LENGTH_LONG).show();
                     }
                 });
             }

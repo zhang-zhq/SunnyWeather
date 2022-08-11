@@ -1,10 +1,13 @@
 package com.example.android.sunnyweather_java.util;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.example.android.sunnyweather_java.db.City;
 import com.example.android.sunnyweather_java.db.Country;
 import com.example.android.sunnyweather_java.db.Province;
+import com.example.android.sunnyweather_java.gson.Weather;
+import com.google.gson.Gson;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,6 +30,7 @@ public class Utility {
                     province.setProvinceCode(provinceObject.getInt("id"));
                     province.save();
                 }
+                Log.d("ChooseAreaFragment","省解析成功");
                 return true;
             }catch (Exception e){
                 e.printStackTrace();
@@ -49,6 +53,7 @@ public class Utility {
                     city.setProvinceId(provinceId);
                     city.save();
                 }
+                Log.d("ChooseAreaFragment","市解析成功");
                 return true;
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -71,11 +76,27 @@ public class Utility {
                     country.setCityId(cityId);
                     country.save();
                 }
+                Log.d("ChooseAreaFragment","县解析成功");
                 return true;
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
         return false;
+    }
+    /**
+     * 将返回的jSON数据解析成天气实体类
+     * */
+    public static Weather handleWeatherResponse(String response){
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            JSONArray jsonArray = jsonObject.getJSONArray("HeWeather");
+            String weatherContent = jsonArray.getJSONObject(0).toString();
+            return new Gson().fromJson(weatherContent,Weather.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        Log.d("handleWeatherResponse","解析失败");
+        return null;
     }
 }
